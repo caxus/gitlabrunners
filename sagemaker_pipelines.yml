@@ -1,0 +1,76 @@
+Parameters:
+  pPipelineRoleArn:
+    Type: String
+    Description: The Role used to execute the sagemaker pipeline.
+  pProjectName:
+    Type: String
+    Description: Name of the project.
+  pFGBucketPrepareOutput:
+    Type: String
+    Description: Bucket name where data prepared with PySpark step will be stored.
+  pFGPrefixOutput:
+    Type: String
+    Description: Prefix name where data prepared with PySpark step will be stored.
+  pFeatureStoreBucket:
+    Type: String
+    Description: Bucket name used for the feature store.
+  pFeatureStorePrefix:
+    Type: String
+    Description: Prefix name of where Feature Groups will be stored in the Feature Store. Associated to pFeatureStoreBucket.
+  pBucketNameCodigos:
+    Type: String
+    Description:
+      Name of bucket which store pipeline codes.
+  pSQLQueryPath:
+    Type: String
+    Description: S3 path where SQL queries will be written.
+
+Resources:
+  rFGEstablecimiento:
+    Type: AWS::SageMaker::Pipeline
+    Properties:
+      PipelineName: 'FGEstablecimiento'
+      PipelineDisplayName: 'FGEstablecimiento'
+      PipelineDescription: Pipeline that ingests data to Feature Group fg-establecimiento-m.
+      PipelineDefinition:
+          PipelineDefinitionBody: !Sub "{\"Version\":\"2020-12-01\",\"Metadata\":{},\"Parameters\":[{\"Name\":\"ProcessingInstanceCount\",\"Type\":\"Integer\",\"DefaultValue\":1},{\"Name\":\"ProcessingInstanceType\",\"Type\":\"String\",\"DefaultValue\":\"ml.m5.xlarge\"}],\"PipelineExperimentConfig\":{\"ExperimentName\":\"pipeline-fg-establ-experiment\",\"TrialName\":\"pipeline-fg-establ-trial\"},\"Steps\":[{\"Name\":\"FGEstablecimientoProcess\",\"Type\":\"Processing\",\"Arguments\":{\"ProcessingResources\":{\"ClusterConfig\":{\"InstanceType\":{\"Get\":\"Parameters.ProcessingInstanceType\"},\"InstanceCount\":{\"Get\":\"Parameters.ProcessingInstanceCount\"},\"VolumeSizeInGB\":30}},\"AppSpecification\":{\"ImageUri\":\"173754725891.dkr.ecr.us-east-1.amazonaws.com/sagemaker-spark-processing:2.4-cpu\",\"ContainerArguments\":[\"--output_bucket\",\"${pFGBucketPrepareOutput}\",\"--output_prefix\",\"${pFGPrefixOutput}\"],\"ContainerEntrypoint\":[\"smspark-submit\",\"/opt/ml/processing/input/code/prepare.py\"]},\"RoleArn\":\"${pPipelineRoleArn}\",\"ProcessingInputs\":[{\"InputName\":\"code\",\"AppManaged\":false,\"S3Input\":{\"S3Uri\":\"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-establecimiento-m/prepare.py\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\",\"S3DataDistributionType\":\"FullyReplicated\",\"S3CompressionType\":\"None\"}}],\"Environment\":{}},\"CacheConfig\":{\"Enabled\":true,\"ExpireAfter\":\"T30m\"}},{\"Name\":\"FGEstablecimientoIngestion\",\"Type\":\"Processing\",\"Arguments\":{\"ProcessingResources\":{\"ClusterConfig\":{\"InstanceType\":\"ml.m5.xlarge\",\"InstanceCount\":1,\"VolumeSizeInGB\":30}},\"AppSpecification\":{\"ImageUri\":\"683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3\",\"ContainerArguments\":[\"--input_bucket\",\"${pFGBucketPrepareOutput}\",\"--input_prefix\",\"${pFGPrefixOutput}/establecimiento_dataset.snappy.parquet\",\"--bucket_name_feature_store\",\"${pFeatureStoreBucket}\",\"--prefix_name_feature_store\",\"${pFeatureStorePrefix}\",\"--feature_group_name\",\"fg-establecimiento-m\"],\"ContainerEntrypoint\":[\"python3\",\"/opt/ml/processing/input/code/ingest.py\"]},\"RoleArn\":\"${pPipelineRoleArn}\",\"ProcessingInputs\":[{\"InputName\":\"code\",\"AppManaged\":false,\"S3Input\":{\"S3Uri\":\"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-establecimiento-m/ingest.py\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\",\"S3DataDistributionType\":\"FullyReplicated\",\"S3CompressionType\":\"None\"}}]},\"DependsOn\":[\"FGEstablecimientoProcess\"],\"CacheConfig\":{\"Enabled\":true,\"ExpireAfter\":\"T30m\"}}]}"
+      RoleArn: !Ref pPipelineRoleArn
+      Tags:
+            - Key: project
+              Value: !Ref pProjectName
+  rFGEstablecimientoPrincip:
+    Type: AWS::SageMaker::Pipeline
+    Properties:
+      PipelineName: 'FGEstablecimientoPrincipal'
+      PipelineDisplayName: 'FGEstablecimientoPrincipal'
+      PipelineDescription: Pipeline that ingests data to Feature Group fg-establecimiento-principal-m.
+      PipelineDefinition:
+          PipelineDefinitionBody: !Sub "{\"Version\": \"2020-12-01\",\"Metadata\": {},\"Parameters\": [{\"Name\": \"ProcessingInstanceCount\",\"Type\": \"Integer\",\"DefaultValue\": 1},{\"Name\": \"ProcessingInstanceType\",\"Type\": \"String\",\"DefaultValue\": \"ml.m5.xlarge\"}],\"PipelineExperimentConfig\": {\"ExperimentName\": \"pipeline-fg-establ-princip-experiment\",\"TrialName\": \"pipeline-fg-establ-princip-trial\"},\"Steps\": [{\"Name\": \"FGEstablecimientoPrincipalProcess\",\"Type\": \"Processing\",\"Arguments\": {\"ProcessingResources\": {\"ClusterConfig\": {\"InstanceType\": {\"Get\": \"Parameters.ProcessingInstanceType\"},\"InstanceCount\": {\"Get\": \"Parameters.ProcessingInstanceCount\"},\"VolumeSizeInGB\": 30}},\"AppSpecification\": {\"ImageUri\": \"173754725891.dkr.ecr.us-east-1.amazonaws.com/sagemaker-spark-processing:2.4-cpu\",\"ContainerArguments\": [\"--output_bucket\",\"${pFGBucketPrepareOutput}\",\"--output_prefix\",\"${pFGPrefixOutput}\"],\"ContainerEntrypoint\": [\"smspark-submit\",\"/opt/ml/processing/input/code/prepare.py\"]},\"RoleArn\": \"${pPipelineRoleArn}\",\"ProcessingInputs\": [{\"InputName\": \"code\",\"AppManaged\": false,\"S3Input\": {\"S3Uri\": \"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-establecimiento-principal-m/prepare.py\",\"LocalPath\": \"/opt/ml/processing/input/code\",\"S3DataType\": \"S3Prefix\",\"S3InputMode\": \"File\",\"S3DataDistributionType\": \"FullyReplicated\",\"S3CompressionType\": \"None\"}}],\"Environment\": {}},\"CacheConfig\": {\"Enabled\": true,\"ExpireAfter\": \"T30m\"}},{\"Name\": \"FGEstablecimientoPrincipalIngestion\",\"Type\": \"Processing\",\"Arguments\": {\"ProcessingResources\": {\"ClusterConfig\": {\"InstanceType\": \"ml.t3.xlarge\",\"InstanceCount\": 1,\"VolumeSizeInGB\": 30}},\"AppSpecification\": {\"ImageUri\": \"683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3\",\"ContainerArguments\": [\"--input_bucket\",\"${pFGBucketPrepareOutput}\",\"--input_prefix\",\"${pFGPrefixOutput}/establecimiento_principal_dataset.snappy.parquet\",\"--bucket_name_feature_store\",\"${pFeatureStoreBucket}\",\"--prefix_name_feature_store\",\"${pFeatureStorePrefix}\",\"--feature_group_name\",\"fg-establecimiento-principal-m\"],\"ContainerEntrypoint\": [\"python3\",\"/opt/ml/processing/input/code/ingest.py\"]},\"RoleArn\": \"${pPipelineRoleArn}\",\"ProcessingInputs\": [{\"InputName\": \"code\",\"AppManaged\": false,\"S3Input\": {\"S3Uri\": \"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-establecimiento-principal-m/ingest.py\",\"LocalPath\": \"/opt/ml/processing/input/code\",\"S3DataType\": \"S3Prefix\",\"S3InputMode\": \"File\",\"S3DataDistributionType\": \"FullyReplicated\",\"S3CompressionType\": \"None\"}}]},\"DependsOn\": [\"FGEstablecimientoPrincipalProcess\"],\"CacheConfig\": {\"Enabled\": true,\"ExpireAfter\": \"T30m\"}}]}"
+      RoleArn: !Ref pPipelineRoleArn
+      Tags:
+            - Key: project
+              Value: !Ref pProjectName
+  rFGAT2Target:
+    Type: AWS::SageMaker::Pipeline
+    Properties:
+      PipelineName: 'FGTargetAT2'
+      PipelineDisplayName: 'FGTargetAT2'
+      PipelineDescription: Pipeline that ingests data to Feature Group fg-activterm-target-m.
+      PipelineDefinition:
+          PipelineDefinitionBody: !Sub "{\"Version\":\"2020-12-01\",\"Metadata\":{},\"Parameters\":[{\"Name\":\"ProcessingInstanceCount\",\"Type\":\"Integer\",\"DefaultValue\":1},{\"Name\":\"ProcessingInstanceType\",\"Type\":\"String\",\"DefaultValue\":\"ml.m5.xlarge\"}],\"PipelineExperimentConfig\":{\"ExperimentName\":\"pipeline-fg-activterm-tgt-experiment\",\"TrialName\":\"pipeline-fg-activterm-tgt-trial\"},\"Steps\":[{\"Name\":\"FGTargetAT2Process\",\"Type\":\"Processing\",\"Arguments\":{\"ProcessingResources\":{\"ClusterConfig\":{\"InstanceType\":{\"Get\":\"Parameters.ProcessingInstanceType\"},\"InstanceCount\":{\"Get\":\"Parameters.ProcessingInstanceCount\"},\"VolumeSizeInGB\":30}},\"AppSpecification\":{\"ImageUri\":\"173754725891.dkr.ecr.us-east-1.amazonaws.com/sagemaker-spark-processing:2.4-cpu\",\"ContainerArguments\":[\"--output_bucket\",\"${pFGBucketPrepareOutput}\",\"--output_prefix\",\"${pFGPrefixOutput}\"],\"ContainerEntrypoint\":[\"smspark-submit\",\"/opt/ml/processing/input/code/prepare.py\"]},\"RoleArn\":\"${pPipelineRoleArn}\",\"ProcessingInputs\":[{\"InputName\":\"code\",\"AppManaged\":false,\"S3Input\":{\"S3Uri\":\"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-activterm-target-m/prepare.py\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\",\"S3DataDistributionType\":\"FullyReplicated\",\"S3CompressionType\":\"None\"}}],\"Environment\":{}},\"CacheConfig\":{\"Enabled\":true,\"ExpireAfter\":\"T30m\"}},{\"Name\":\"FGTargetAT2Ingestion\",\"Type\":\"Processing\",\"Arguments\":{\"ProcessingResources\":{\"ClusterConfig\":{\"InstanceType\":\"ml.m5.xlarge\",\"InstanceCount\":1,\"VolumeSizeInGB\":30}},\"AppSpecification\":{\"ImageUri\":\"683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3\",\"ContainerArguments\":[\"--input_bucket\",\"${pFGBucketPrepareOutput}\",\"--input_prefix\",\"${pFGPrefixOutput}/target_at2_dataset.snappy.parquet\",\"--bucket_name_feature_store\",\"${pFeatureStoreBucket}\",\"--prefix_name_feature_store\",\"${pFeatureStorePrefix}\",\"--feature_group_name\",\"fg-activterm-target-m\"],\"ContainerEntrypoint\":[\"python3\",\"/opt/ml/processing/input/code/ingest.py\"]},\"RoleArn\":\"${pPipelineRoleArn}\",\"ProcessingInputs\":[{\"InputName\":\"code\",\"AppManaged\":false,\"S3Input\":{\"S3Uri\":\"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-activterm-target-m/ingest.py\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\",\"S3DataDistributionType\":\"FullyReplicated\",\"S3CompressionType\":\"None\"}}]},\"DependsOn\":[\"FGTargetAT2Process\"],\"CacheConfig\":{\"Enabled\":true,\"ExpireAfter\":\"T30m\"}}]}"
+      RoleArn: !Ref pPipelineRoleArn
+      Tags:
+            - Key: project
+              Value: !Ref pProjectName
+  rFGAT2Model:
+    Type: AWS::SageMaker::Pipeline
+    Properties:
+      PipelineName: 'FGModelAT2'
+      PipelineDisplayName: 'FGModelAT2'
+      PipelineDescription: Pipeline that ingests data to Feature Group fg-activterm-model-m.
+      PipelineDefinition:
+          PipelineDefinitionBody: !Sub "{\"Version\":\"2020-12-01\",\"Metadata\":{},\"Parameters\":[{\"Name\":\"ProcessingInstanceCount\",\"Type\":\"Integer\",\"DefaultValue\":1},{\"Name\":\"ProcessingInstanceType\",\"Type\":\"String\",\"DefaultValue\":\"ml.m5.xlarge\"}],\"PipelineExperimentConfig\":{\"ExperimentName\":\"pipeline-fg-activter-model-m-experiment\",\"TrialName\":\"pipeline-fg-activter-model-m-trial\"},\"Steps\":[{\"Name\":\"FGActivterModelCreate\",\"Type\":\"Processing\",\"Arguments\":{\"ProcessingResources\":{\"ClusterConfig\":{\"InstanceType\":\"ml.t3.xlarge\",\"InstanceCount\":1,\"VolumeSizeInGB\":30}},\"AppSpecification\":{\"ImageUri\":\"683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3\",\"ContainerArguments\":[\"--output_feature_group_name\",\"fg-activterm-model-m\",\"--bucket_name_feature_store\",\"${pFeatureStoreBucket}\",\"--prefix_name_feature_store\",\"${pFeatureStorePrefix}\",\"--sql_output_path\",\"${pSQLQueryPath}\",\"--enable_online_store\",\"True\"],\"ContainerEntrypoint\":[\"python3\",\"/opt/ml/processing/input/code/ingest.py\"]},\"RoleArn\":\"${pPipelineRoleArn}\",\"ProcessingInputs\":[{\"InputName\":\"code\",\"AppManaged\":false,\"S3Input\":{\"S3Uri\":\"s3://${pBucketNameCodigos}/${pProjectName}/pipelines/fg-activterm-model-m/ingest.py\",\"LocalPath\":\"/opt/ml/processing/input/code\",\"S3DataType\":\"S3Prefix\",\"S3InputMode\":\"File\",\"S3DataDistributionType\":\"FullyReplicated\",\"S3CompressionType\":\"None\"}}]}}]}"
+      RoleArn: !Ref pPipelineRoleArn
+      Tags:
+            - Key: project
+              Value: !Ref pProjectName
